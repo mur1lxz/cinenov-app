@@ -9,6 +9,19 @@ describe("autenticação", () => {
   });
   after(() => srv.close());
 
+  it("serve a página inicial do CineNov", async () => {
+    const response = await fetch(`${srv.baseUrl}/`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\\/html/);
+    assert.match(await response.text(), /CineNov/);
+  });
+
+  it("expõe um endpoint simples de saúde", async () => {
+    const response = await fetch(`${srv.baseUrl}/api/health`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true, service: "cinenov" });
+  });
+
   it("cadastra, faz login, identifica o usuário e faz logout", async () => {
     const c = createClient(srv.baseUrl);
 
@@ -48,7 +61,7 @@ describe("autenticação", () => {
     await c.request("POST", "/api/auth/register", { email: "a1@email.com", password: "mesma-senha-123" });
     await c.request("POST", "/api/auth/register", { email: "a2@email.com", password: "mesma-senha-123" });
     const [h1, h2] = ["a1@email.com", "a2@email.com"].map(
-      (e) => srv.db.prepare("SELECT password_hash h FROM users WHERE email = ?").get(e).h,
+      (email) => srv.db.prepare("SELECT password_hash h FROM users WHERE email = ?").get(email).h,
     );
     assert.notEqual(h1, h2);
   });
@@ -80,17 +93,19 @@ describe("autenticação", () => {
   });
 
   it("rejeita cookie com token forjado", async () => {
-    const r = await fetch(`${srv.baseUrl}/api/auth/me`, { headers: { Cookie: "cinenov_session=abc.def.ghi" } });
-    assert.equal(r.status, 401);
+    const response = await fetch(`${srv.baseUrl}/api/auth/me`, {
+      headers: { Cookie: "cinenov_session=abc.def.ghi" },
+    });
+    assert.equal(response.status, 401);
   });
 
   it("JSON malformado devolve 400 sem vazar detalhes", async () => {
-    const r = await fetch(`${srv.baseUrl}/api/auth/login`, {
+    const response = await fetch(`${srv.baseUrl}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "{oops",
     });
-    assert.equal(r.status, 400);
-    assert.deepEqual(await r.json(), { error: "Requisição inválida." });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "Requisição inválida." });
   });
 });
