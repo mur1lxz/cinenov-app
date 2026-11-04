@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { isUniqueViolation } from "../db/index.js";
@@ -12,6 +13,13 @@ function readCredentials(body) {
     email: typeof body?.email === "string" ? body.email.trim().toLowerCase() : "",
     password: typeof body?.password === "string" ? body.password : "",
   };
+}
+
+function verifyLegacyPassword(password, legacyPassword) {
+  if (typeof legacyPassword !== "string") return false;
+  const candidate = Buffer.from(password, "utf8");
+  const stored = Buffer.from(legacyPassword, "utf8");
+  return candidate.length === stored.length && timingSafeEqual(candidate, stored);
 }
 
 export function createAuthRouter({ users, session, requireAuth, rateLimitMax }) {
@@ -55,7 +63,21 @@ export function createAuthRouter({ users, session, requireAuth, rateLimitMax }) 
     if (!email || !password) return res.status(400).json({ error: "Informe e-mail e senha." });
 
     const user = await users.findByEmail(email);
-    const valid = await verifyPassword(password, user?.password_hash ?? DUMMY_HASH);
+    let valid = false;
+
+    if (user?.password_hash) {
+      valid = await verifyPassword(password, user.password_hash);
+    } else if (user?.password_legacy != null) {
+      valid = verifyLegacyPassword(password, user.password_legacy);
+      if (valid) {
+        // Migra a conta antiga no primeiro login correto e apaga a senha em texto puro.
+        await users.updatePasswordHash(user.id, await hashPassword(password));
+      }
+    } else {
+      // Mantém custo semelhante quando o e-mail não existe ou a conta não tem credencial.
+      await verifyPassword(password, DUMMY_HASH);
+    }
+
     if (!user || !valid) return res.status(401).json({ error: "E-mail ou senha incorretos." });
 
     session.issue(res, req, user);
