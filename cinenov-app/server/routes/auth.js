@@ -72,6 +72,8 @@ export function createAuthRouter({ users, session, requireAuth, rateLimitMax }) 
       if (valid) {
         // Migra a conta antiga no primeiro login correto e apaga a senha em texto puro.
         await users.updatePasswordHash(user.id, await hashPassword(password));
+      } else {
+        await verifyPassword(password, DUMMY_HASH);
       }
     } else {
       // Mantém custo semelhante quando o e-mail não existe ou a conta não tem credencial.
