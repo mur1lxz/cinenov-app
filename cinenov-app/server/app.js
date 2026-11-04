@@ -35,6 +35,10 @@ export function createApp({ config, users, tmdb }) {
     ttlSeconds: config.sessionTtlSeconds,
   });
   const requireAuth = createRequireAuth({ session, users });
+  
+  app.get("/", (_req, res) => {
+  res.redirect(302, "/index.html");
+});
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, service: "cinenov" });
