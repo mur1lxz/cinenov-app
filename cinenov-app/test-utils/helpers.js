@@ -18,23 +18,27 @@ export async function startTestServer({ tmdb } = {}) {
     CREATE TABLE users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL COLLATE NOCASE UNIQUE,
-      password_hash TEXT NOT NULL,
+      password_hash TEXT,
+      password_legacy TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
 
   const users = {
     async findByEmail(email) {
-      return db.prepare("SELECT id, email, password_hash FROM users WHERE email = ?").get(email) ?? null;
+      return db.prepare("SELECT id, email, password_hash, password_legacy FROM users WHERE email = ?").get(email) ?? null;
     },
     async findById(id) {
-      return db.prepare("SELECT id, email, password_hash FROM users WHERE id = ?").get(id) ?? null;
+      return db.prepare("SELECT id, email FROM users WHERE id = ?").get(id) ?? null;
     },
     async create(email, passwordHash) {
       const result = db
         .prepare("INSERT INTO users (email, password_hash) VALUES (?, ?)")
         .run(email, passwordHash);
-      return db.prepare("SELECT id, email, password_hash FROM users WHERE id = ?").get(Number(result.lastInsertRowid));
+      return db.prepare("SELECT id, email FROM users WHERE id = ?").get(Number(result.lastInsertRowid));
+    },
+    async updatePasswordHash(id, passwordHash) {
+      db.prepare("UPDATE users SET password_hash = ?, password_legacy = NULL WHERE id = ?").run(passwordHash, id);
     },
   };
 
