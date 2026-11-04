@@ -1,31 +1,36 @@
-import fs from "node:fs";
-import path from "node:path";
-import { DatabaseSync } from "node:sqlite"; // SQLite embutido no Node (22.13+): sem dependência nativa
+const { createClient } = require('@supabase/supabase-js');
 
-const schema = fs.readFileSync(new URL("./schema.sql", import.meta.url), "utf8");
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-/** Abre (e cria, se preciso) o banco SQLite. Use ":memory:" nos testes. */
-export function openDatabase(dbPath) {
-  if (dbPath !== ":memory:") fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  const db = new DatabaseSync(dbPath);
-  db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
-  db.exec(schema);
-  return db;
+// Busca o usuário pelo e-mail
+async function getUserByEmail(email) {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+    // Se não achar o usuário, retorna null em vez de dar erro
+    if (error && error.code === 'PGRST116') return null; 
+    if (error) throw error;
+
+    return data;
 }
 
-/** Acesso à tabela `users`: o único dado persistido pelo servidor. */
-export function createUserStore(db) {
-  const byEmail = db.prepare("SELECT id, email, password_hash FROM users WHERE email = ?");
-  const byId = db.prepare("SELECT id, email FROM users WHERE id = ?");
-  const insert = db.prepare("INSERT INTO users (email, password_hash) VALUES (?, ?)");
+// Cria um novo usuário
+async function createUser(email, password) {
+    const { data, error } = await supabase
+        .from('users')
+        .insert([{ email, password }])
+        .select();
 
-  return {
-    findByEmail: (email) => byEmail.get(email),
-    findById: (id) => byId.get(id),
-    create: (email, passwordHash) => ({ id: Number(insert.run(email, passwordHash).lastInsertRowid), email }),
-  };
+    if (error) throw error;
+    return data[0];
 }
 
-export function isUniqueViolation(err) {
-  return err?.errcode === 2067 || /UNIQUE constraint failed/i.test(err?.message ?? "");
-}
+module.exports = {
+    getUserByEmail,
+    createUser
+};
