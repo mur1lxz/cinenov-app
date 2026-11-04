@@ -12,7 +12,7 @@ describe("autenticação", () => {
   it("serve a página inicial do CineNov", async () => {
     const response = await fetch(`${srv.baseUrl}/`);
     assert.equal(response.status, 200);
-    assert.match(response.headers.get("content-type"), /text\\/html/);
+    assert.ok(response.headers.get("content-type").includes("text/html"));
     assert.match(await response.text(), /CineNov/);
   });
 
