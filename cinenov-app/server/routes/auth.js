@@ -33,15 +33,20 @@ export function createAuthRouter({ users, session, requireAuth, rateLimitMax }) 
     if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
       return res.status(400).json({ error: `A senha deve ter entre ${PASSWORD_MIN} e ${PASSWORD_MAX} caracteres.` });
     }
-    if (users.findByEmail(email)) {
+
+    if (await users.findByEmail(email)) {
       return res.status(409).json({ error: "Já existe uma conta com este e-mail." });
     }
+
     try {
-      users.create(email, await hashPassword(password));
+      await users.create(email, await hashPassword(password));
     } catch (err) {
-      if (isUniqueViolation(err)) return res.status(409).json({ error: "Já existe uma conta com este e-mail." });
+      if (isUniqueViolation(err)) {
+        return res.status(409).json({ error: "Já existe uma conta com este e-mail." });
+      }
       throw err;
     }
+
     res.status(201).json({ email });
   });
 
@@ -49,7 +54,7 @@ export function createAuthRouter({ users, session, requireAuth, rateLimitMax }) 
     const { email, password } = readCredentials(req.body);
     if (!email || !password) return res.status(400).json({ error: "Informe e-mail e senha." });
 
-    const user = users.findByEmail(email);
+    const user = await users.findByEmail(email);
     const valid = await verifyPassword(password, user?.password_hash ?? DUMMY_HASH);
     if (!user || !valid) return res.status(401).json({ error: "E-mail ou senha incorretos." });
 
