@@ -22,7 +22,7 @@ export function loadConfig(env = process.env) {
   }
 
   const supabaseUrl = (env.SUPABASE_URL || "").trim();
-  const supabaseKey = (env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  const supabaseKey = (env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_KEY || "").trim();
 
   return {
     isProd,
