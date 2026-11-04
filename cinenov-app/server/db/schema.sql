@@ -1,4 +1,4 @@
--- Execute este script uma vez no SQL Editor do projeto Supabase.
+-- Execute este script no SQL Editor do projeto Supabase.
 -- A chave secreta do Supabase deve ficar somente nas variáveis do servidor.
 
 create table if not exists public.users (
@@ -16,3 +16,9 @@ alter table public.users enable row level security;
 grant usage on schema public to service_role;
 grant select, insert on table public.users to service_role;
 grant usage, select on all sequences in schema public to service_role;
+
+-- IMPORTANTE:
+-- Se você já criou public.users com uma coluna chamada "password", não apague
+-- essa coluna sem decidir como tratar as contas existentes. O código atual
+-- exige password_hash com hash scrypt. Para um banco de testes sem contas
+-- importantes, remova a tabela antiga e execute o script novamente.
