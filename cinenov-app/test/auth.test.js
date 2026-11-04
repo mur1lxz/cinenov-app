@@ -1,0 +1,96 @@
+import assert from "node:assert/strict";
+import { after, before, describe, it } from "node:test";
+import { createClient, startTestServer } from "../test-utils/helpers.js";
+
+describe("autenticação", () => {
+  let srv;
+  before(async () => {
+    srv = await startTestServer();
+  });
+  after(() => srv.close());
+
+  it("cadastra, faz login, identifica o usuário e faz logout", async () => {
+    const c = createClient(srv.baseUrl);
+
+    let r = await c.request("POST", "/api/auth/register", { email: "Ana@Email.com ", password: "senha-forte-1" });
+    assert.equal(r.status, 201);
+    assert.equal(r.json.email, "ana@email.com");
+
+    r = await c.request("GET", "/api/auth/me");
+    assert.equal(r.status, 401, "cadastrar não deve logar automaticamente");
+
+    r = await c.request("POST", "/api/auth/login", { email: "ANA@email.com", password: "senha-forte-1" });
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get("set-cookie"), /HttpOnly/i);
+    assert.match(r.headers.get("set-cookie"), /SameSite=Lax/i);
+
+    r = await c.request("GET", "/api/auth/me");
+    assert.equal(r.status, 200);
+    assert.equal(r.json.email, "ana@email.com");
+
+    r = await c.request("POST", "/api/auth/logout");
+    assert.equal(r.status, 204);
+    r = await c.request("GET", "/api/auth/me");
+    assert.equal(r.status, 401);
+  });
+
+  it("guarda apenas o hash da senha, nunca a senha em si", async () => {
+    const c = createClient(srv.baseUrl);
+    await c.request("POST", "/api/auth/register", { email: "hash@email.com", password: "minha-senha-secreta" });
+    const row = srv.db.prepare("SELECT * FROM users WHERE email = ?").get("hash@email.com");
+    assert.ok(row.password_hash.startsWith("scrypt$"));
+    assert.ok(!row.password_hash.includes("minha-senha-secreta"));
+    assert.deepEqual(Object.keys(row).sort(), ["created_at", "email", "id", "password_hash"]);
+  });
+
+  it("dois cadastros com a mesma senha geram hashes diferentes (salt)", async () => {
+    const c = createClient(srv.baseUrl);
+    await c.request("POST", "/api/auth/register", { email: "a1@email.com", password: "mesma-senha-123" });
+    await c.request("POST", "/api/auth/register", { email: "a2@email.com", password: "mesma-senha-123" });
+    const [h1, h2] = ["a1@email.com", "a2@email.com"].map(
+      (e) => srv.db.prepare("SELECT password_hash h FROM users WHERE email = ?").get(e).h,
+    );
+    assert.notEqual(h1, h2);
+  });
+
+  it("rejeita e-mail duplicado (ignorando maiúsculas)", async () => {
+    const c = createClient(srv.baseUrl);
+    await c.request("POST", "/api/auth/register", { email: "dup@email.com", password: "senha-forte-1" });
+    const r = await c.request("POST", "/api/auth/register", { email: "DUP@email.com", password: "outra-senha-1" });
+    assert.equal(r.status, 409);
+  });
+
+  it("valida e-mail e tamanho da senha", async () => {
+    const c = createClient(srv.baseUrl);
+    assert.equal((await c.request("POST", "/api/auth/register", { email: "invalido", password: "senha-forte-1" })).status, 400);
+    assert.equal((await c.request("POST", "/api/auth/register", { email: "ok@email.com", password: "curta" })).status, 400);
+    assert.equal((await c.request("POST", "/api/auth/register", { email: "ok@email.com", password: "x".repeat(129) })).status, 400);
+    assert.equal((await c.request("POST", "/api/auth/register", { email: ["a@b.com"], password: { $ne: 1 } })).status, 400);
+  });
+
+  it("login com senha errada ou e-mail inexistente dá a mesma resposta", async () => {
+    const c = createClient(srv.baseUrl);
+    await c.request("POST", "/api/auth/register", { email: "certo@email.com", password: "senha-forte-1" });
+    const wrong = await c.request("POST", "/api/auth/login", { email: "certo@email.com", password: "senha-errada-1" });
+    const ghost = await c.request("POST", "/api/auth/login", { email: "fantasma@email.com", password: "senha-forte-1" });
+    assert.equal(wrong.status, 401);
+    assert.equal(ghost.status, 401);
+    assert.deepEqual(wrong.json, ghost.json);
+    assert.equal(c.cookie, "");
+  });
+
+  it("rejeita cookie com token forjado", async () => {
+    const r = await fetch(`${srv.baseUrl}/api/auth/me`, { headers: { Cookie: "cinenov_session=abc.def.ghi" } });
+    assert.equal(r.status, 401);
+  });
+
+  it("JSON malformado devolve 400 sem vazar detalhes", async () => {
+    const r = await fetch(`${srv.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{oops",
+    });
+    assert.equal(r.status, 400);
+    assert.deepEqual(await r.json(), { error: "Requisição inválida." });
+  });
+});

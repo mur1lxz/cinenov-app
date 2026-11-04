@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineNov — Em Cartaz e Em Breve</title>
+  <meta name="description" content="Catálogo de filmes em cartaz e próximos lançamentos, com conta e favoritos." />
+  <meta name="theme-color" content="#0b0b0d" />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <!-- LOGIN / CADASTRO -->
+  <section id="login-view" class="view login-view hidden">
+    <div class="login-card">
+      <h1 class="brand">Cine<span>Nov</span></h1>
+      <p class="login-sub">Seu cinema, sua lista</p>
+
+      <div class="auth-tabs" role="tablist" aria-label="Acesso">
+        <button class="auth-tab active" data-mode="login" role="tab" aria-selected="true" type="button">Fazer Login</button>
+        <button class="auth-tab" data-mode="signup" role="tab" aria-selected="false" type="button">Criar Conta</button>
+      </div>
+
+      <form id="auth-form" class="auth-form" novalidate>
+        <label for="email">E-mail</label>
+        <input type="email" id="email" placeholder="voce@email.com" autocomplete="email" />
+
+        <label for="password">Senha</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+
+        <div id="confirm-wrap" class="hidden">
+          <label for="confirm">Confirmar senha</label>
+          <input type="password" id="confirm" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+
+        <p id="auth-msg" class="auth-msg" role="status" aria-live="polite"></p>
+        <button type="submit" id="auth-submit" class="btn-primary">Entrar</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- APLICATIVO -->
+  <div id="app-view" class="view hidden">
+    <header class="navbar">
+      <h1 class="brand small">Cine<span>Nov</span></h1>
+      <nav aria-label="Seções">
+        <button class="nav-link active" data-view="now" type="button">Em Cartaz</button>
+        <button class="nav-link" data-view="upcoming" type="button">Em Breve</button>
+        <button class="nav-link" data-view="favorites" type="button">Favoritos <span id="fav-count" class="badge">0</span></button>
+      </nav>
+      <div class="user-box">
+        <span id="user-email" class="user-email"></span>
+        <button id="logout" class="btn-ghost" type="button">Sair</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="section-head">
+        <h2 id="section-title" class="section-title"></h2>
+
+        <form id="search" class="search" role="search" autocomplete="off">
+          <button type="submit" class="search-btn" aria-label="Buscar">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" /><path d="m20 20-3.6-3.6" />
+            </svg>
+          </button>
+          <label for="search-input" class="sr-only">Buscar filme em cartaz</label>
+          <input id="search-input" type="search" placeholder="Buscar filme em cartaz…" enterkeyhint="search" />
+          <button type="button" id="search-clear" class="search-clear hidden" aria-label="Limpar busca">×</button>
+        </form>
+      </div>
+
+      <p id="results-info" class="results-info" aria-live="polite"></p>
+      <div id="grid" class="grid"></div>
+      <p id="empty" class="empty hidden"></p>
+    </main>
+  </div>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

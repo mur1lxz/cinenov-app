@@ -1,0 +1,17 @@
+# Dependências
+node_modules/
+
+# Segredos: NUNCA suba o .env
+.env
+.env.*
+!.env.example
+
+# Banco de dados local (contém e-mails e hashes de senha)
+data/*
+!data/.gitkeep
+
+# Logs e sistema
+*.log
+.DS_Store
+.vscode/
+.idea/
