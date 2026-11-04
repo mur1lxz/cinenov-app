@@ -1,9 +1,7 @@
 import "dotenv/config";
-import express from "express";
 import { createProductionApp } from "./server/production.js";
 
-// Vercel reconhece este arquivo na raiz como a entrada da aplicação Express.
-const app = express();
-app.use(createProductionApp());
+// A Vercel função serverless recebe o app Express exportado por padrão.
+const app = createProductionApp();
 
 export default app;
