@@ -338,12 +338,6 @@ O endpoint de saúde deve responder com um JSON semelhante a:
 - Favoritos são salvos localmente no navegador. Limpar os dados do navegador pode apagar essa lista.
 - O projeto utiliza o TMDB para dados e imagens de filmes; não é afiliado nem endossado pelo TMDB.
 
-## 👨‍💻 Autor
-
-Desenvolvido por **Murilo Silva Magalhães**.
-
-- GitHub: [@mur1lxz](https://github.com/mur1lxz)
-- LinkedIn: [linkedin.com/in/murilosilvaa](https://linkedin.com/in/murilosilvaa)
 
 ---
 
