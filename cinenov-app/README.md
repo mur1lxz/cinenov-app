@@ -52,7 +52,7 @@ cinenov-app/
 
 O banco usa a tabela `public.users`. O script habilita RLS e concede acesso de leitura e inserção ao papel de servidor `service_role`; a chave administrativa não deve ser exposta ao navegador.
 
-> Se você já criou uma tabela `users` com uma coluna `password` (senha em texto puro), não a reutilize sem migrar as contas. O código atual exige `password_hash` com hashes scrypt. Para um banco de testes sem contas importantes, remova a tabela antiga e execute o script atualizado. Não publique nem compartilhe a chave secreta do Supabase.
+> Se você já tinha a tabela `users` com uma coluna `password` em texto puro, o script SQL atualizado move os valores para `password_legacy` e remove a coluna antiga. Cada conta será convertida para hash scrypt no primeiro login válido, quando `password_legacy` também é apagada. Faça backup do banco antes da migração e não publique nem compartilhe a chave secreta do Supabase.
 
 ## Executar localmente
 
