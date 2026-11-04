@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 export const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * Lê e valida as variáveis de ambiente. Recebe `env` para facilitar os testes.
+ * Lê e valida as variáveis de ambiente utilizadas pelo CineNov.
  */
 export function loadConfig(env = process.env) {
   const isProd = env.NODE_ENV === "production";
@@ -21,13 +21,17 @@ export function loadConfig(env = process.env) {
     throw new Error("JWT_SECRET precisa ter pelo menos 32 caracteres em produção.");
   }
 
+  const supabaseUrl = (env.SUPABASE_URL || "").trim();
+  const supabaseKey = (env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_KEY || "").trim();
+
   return {
     isProd,
     port: Number(env.PORT) || 3000,
-    dbPath: env.DB_PATH || path.join(ROOT_DIR, "data", "cinenov.db"),
     jwtSecret,
     tmdbApiKey: (env.TMDB_API_KEY || "").trim(),
-    sessionTtlSeconds: 60 * 60 * 24 * 7, // 7 dias
-    authRateLimitMax: Number(env.AUTH_RATE_LIMIT_MAX) || 20, // tentativas por IP a cada 15 min
+    supabaseUrl,
+    supabaseKey,
+    sessionTtlSeconds: 60 * 60 * 24 * 7,
+    authRateLimitMax: Number(env.AUTH_RATE_LIMIT_MAX) || 20,
   };
 }

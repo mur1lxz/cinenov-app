@@ -1,23 +1,61 @@
+import { DatabaseSync } from "node:sqlite";
 import { createApp } from "../server/app.js";
 import { loadConfig } from "../server/config.js";
-import { openDatabase } from "../server/db/index.js";
 
 export const fakeMovies = [
   { id: 1, title: "Duna: Parte Três", original_title: "Dune: Part Three", overview: "Areia.", poster_path: "/a.jpg", release_date: "2026-11-05", vote_average: 8.1 },
   { id: 2, title: "Ação Explosiva", original_title: "Big Action", overview: "Boom.", poster_path: null, release_date: "2026-10-20", vote_average: 6.2 },
 ];
 
-/** Sobe o app numa porta livre, com banco em memória e TMDB falso. */
+/** Sobe o app com SQLite em memória e TMDB falso; não depende de uma conta Supabase. */
 export async function startTestServer({ tmdb } = {}) {
-  const config = loadConfig({ JWT_SECRET: "x".repeat(40), DB_PATH: ":memory:", AUTH_RATE_LIMIT_MAX: "1000" });
-  const db = openDatabase(":memory:");
+  const config = loadConfig({
+    JWT_SECRET: "x".repeat(40),
+    AUTH_RATE_LIMIT_MAX: "1000",
+  });
+  const db = new DatabaseSync(":memory:");
+  db.exec(`
+    CREATE TABLE users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      password_hash TEXT,
+      password_legacy TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  const users = {
+    async findByEmail(email) {
+      return db.prepare("SELECT id, email, password_hash, password_legacy FROM users WHERE email = ?").get(email) ?? null;
+    },
+    async findById(id) {
+      return db.prepare("SELECT id, email FROM users WHERE id = ?").get(id) ?? null;
+    },
+    async create(email, passwordHash) {
+      const result = db
+        .prepare("INSERT INTO users (email, password_hash) VALUES (?, ?)")
+        .run(email, passwordHash);
+      return db.prepare("SELECT id, email FROM users WHERE id = ?").get(Number(result.lastInsertRowid));
+    },
+    async updatePasswordHash(id, passwordHash) {
+      db.prepare("UPDATE users SET password_hash = ?, password_legacy = NULL WHERE id = ?").run(passwordHash, id);
+    },
+  };
+
   const fakeTmdb = tmdb ?? { nowPlaying: async () => fakeMovies, upcoming: async () => [] };
-  const app = createApp({ config, db, tmdb: fakeTmdb });
+  const app = createApp({ config, users, tmdb: fakeTmdb });
   const server = await new Promise((resolve) => {
     const s = app.listen(0, () => resolve(s));
   });
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
-  return { baseUrl, db, close: () => new Promise((r) => server.close(r)) };
+  return {
+    baseUrl,
+    db,
+    close: () => new Promise((resolve) => server.close(() => {
+      db.close();
+      resolve();
+    })),
+  };
 }
 
 /** Cliente fetch com "cookie jar" de um cookie só (suficiente para a sessão). */
@@ -40,10 +78,11 @@ export function createClient(baseUrl) {
     },
   };
 }
-function safeJson(t) {
+
+function safeJson(text) {
   try {
-    return JSON.parse(t);
+    return JSON.parse(text);
   } catch {
-    return t;
+    return text;
   }
 }

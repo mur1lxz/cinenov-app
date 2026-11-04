@@ -1,7 +1,7 @@
 {
   "name": "cinenov",
   "version": "1.0.0",
-  "description": "CineNov: catálogo de filmes em cartaz e em breve, com login real e favoritos.",
+  "description": "CineNov: catálogo de filmes em cartaz e em breve, com autenticação segura, Supabase e favoritos.",
   "private": true,
   "type": "module",
   "main": "server/index.js",
@@ -18,7 +18,8 @@
     "cinema",
     "tmdb",
     "express",
-    "sqlite"
+    "supabase",
+    "postgresql"
   ],
   "license": "UNLICENSED",
   "dependencies": {

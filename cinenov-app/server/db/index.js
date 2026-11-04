@@ -1,35 +1,80 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+/**
+ * Cria um cliente administrativo do Supabase para uso exclusivo no servidor.
+ * Nunca disponibilize essa chave no navegador.
+ */
+export function createSupabaseClient({ url, key }) {
+  if (!url) {
+    throw new Error("SUPABASE_URL não está definida nas variáveis de ambiente.");
+  }
+  if (!key) {
+    throw new Error("SUPABASE_SECRET_KEY não está definida. Configure a chave secreta do Supabase no servidor.");
+  }
 
-// Auxiliar para verificar se o erro é de e-mail duplicado no Postgres/Supabase
-export function isUniqueViolation(error) {
-    return error && error.code === '23505';
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
 }
 
-// Busca o usuário pelo e-mail
-export async function getUserByEmail(email) {
-    const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
+/**
+ * Camada de acesso aos usuários. As senhas novas são salvas com hash scrypt.
+ * password_legacy existe apenas para migrar contas antigas que guardavam
+ * senha em texto puro: ela é removida da linha assim que a pessoa entra.
+ */
+export function createUserStore(supabase) {
+  return {
+    async findByEmail(email) {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, email, password_hash, password_legacy")
+        .eq("email", String(email).trim().toLowerCase())
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async findById(id) {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, email")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async create(email, passwordHash) {
+      const { data, error } = await supabase
+        .from("users")
+        .insert({
+          email: String(email).trim().toLowerCase(),
+          password_hash: passwordHash,
+        })
+        .select("id, email")
         .single();
 
-    if (error && error.code === 'PGRST116') return null; 
-    if (error) throw error;
+      if (error) throw error;
+      return data;
+    },
 
-    return data;
+    async updatePasswordHash(id, passwordHash) {
+      const { error } = await supabase
+        .from("users")
+        .update({ password_hash: passwordHash, password_legacy: null })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+  };
 }
 
-// Cria um novo usuário
-export async function createUser(email, password) {
-    const { data, error } = await supabase
-        .from('users')
-        .insert([{ email, password }])
-        .select();
-
-    if (error) throw error;
-    return data[0];
+export function isUniqueViolation(error) {
+  return error?.code === "23505" || error?.code === "ERR_SQLITE_CONSTRAINT_UNIQUE";
 }
