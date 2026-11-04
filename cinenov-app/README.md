@@ -68,7 +68,7 @@ Preencha o arquivo `.env`:
 | Variável | Obrigatória | Finalidade |
 |---|---|---|
 | `SUPABASE_URL` | Sim | URL do projeto Supabase |
-| `SUPABASE_SECRET_KEY` | Sim | Chave secreta do servidor (ou `SUPABASE_SERVICE_ROLE_KEY` legada) |
+| `SUPABASE_SECRET_KEY` | Sim | Chave secreta do servidor (aceita também `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_KEY` legadas) |
 | `JWT_SECRET` | Sim em produção | Segredo aleatório com pelo menos 32 caracteres |
 | `TMDB_API_KEY` | Para carregar filmes | Chave da API TMDB |
 | `PORT` | Não | Porta local (padrão 3000) |
@@ -101,7 +101,7 @@ Os testes de autenticação usam SQLite em memória e não precisam de uma conta
 3. Use o Framework Preset **Express**. O arquivo `vercel.json` declara esse preset; não configure rewrites ou builders manuais.
 4. Em **Project Settings → Environment Variables**, adicione:
    - `SUPABASE_URL`
-   - `SUPABASE_SECRET_KEY` (ou `SUPABASE_SERVICE_ROLE_KEY` se estiver usando a chave legada)
+   - `SUPABASE_SECRET_KEY` (ou `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_KEY` se estiver usando um nome legado)
    - `JWT_SECRET`
    - `TMDB_API_KEY`
    - `NODE_ENV` com valor `production`
