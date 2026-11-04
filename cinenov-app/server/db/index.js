@@ -4,6 +4,11 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Auxiliar para verificar se o erro é de e-mail duplicado no Postgres/Supabase
+function isUniqueViolation(error) {
+    return error && error.code === '23505';
+}
+
 // Busca o usuário pelo e-mail
 async function getUserByEmail(email) {
     const { data, error } = await supabase
@@ -12,7 +17,6 @@ async function getUserByEmail(email) {
         .eq('email', email)
         .single();
 
-    // Se não achar o usuário, retorna null em vez de dar erro
     if (error && error.code === 'PGRST116') return null; 
     if (error) throw error;
 
@@ -32,5 +36,6 @@ async function createUser(email, password) {
 
 module.exports = {
     getUserByEmail,
-    createUser
+    createUser,
+    isUniqueViolation
 };
