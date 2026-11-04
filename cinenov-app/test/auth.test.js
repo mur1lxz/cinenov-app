@@ -52,8 +52,24 @@ describe("autenticação", () => {
     await c.request("POST", "/api/auth/register", { email: "hash@email.com", password: "minha-senha-secreta" });
     const row = srv.db.prepare("SELECT * FROM users WHERE email = ?").get("hash@email.com");
     assert.ok(row.password_hash.startsWith("scrypt$"));
+    assert.equal(row.password_legacy, null);
     assert.ok(!row.password_hash.includes("minha-senha-secreta"));
-    assert.deepEqual(Object.keys(row).sort(), ["created_at", "email", "id", "password_hash"]);
+  });
+
+  it("migra uma conta antiga com senha em texto puro no primeiro login válido", async () => {
+    const insert = srv.db.prepare("INSERT INTO users (email, password_legacy) VALUES (?, ?)");
+    insert.run("legado@email.com", "senha-antiga-secreta");
+
+    const c = createClient(srv.baseUrl);
+    const response = await c.request("POST", "/api/auth/login", {
+      email: "LEGADO@email.com",
+      password: "senha-antiga-secreta",
+    });
+
+    assert.equal(response.status, 200);
+    const row = srv.db.prepare("SELECT password_hash, password_legacy FROM users WHERE email = ?").get("legado@email.com");
+    assert.ok(row.password_hash.startsWith("scrypt$"));
+    assert.equal(row.password_legacy, null);
   });
 
   it("dois cadastros com a mesma senha geram hashes diferentes (salt)", async () => {
